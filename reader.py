@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from lxml import etree
+import zipfile
 
 MUSICXML_FIFTHS_TABLE = {
     0: 'C',
@@ -204,10 +205,23 @@ class Measure:
         for elem in self._elem.xpath('note'):
             yield Note(elem, self.getAttributes())
 
+def readCompressedMusicXML(filename):
+    archive = zipfile.ZipFile(filename)
+    try:
+        container_xml = archive.read('META-INF/container.xml')
+        container_root = etree.fromstring(container_xml)
+        musicxml_filename = container_root.xpath('rootfiles/rootfile')[0].attrib.get('full-path')
+        return archive.read(musicxml_filename)
+    except:
+        raise MusicXMLParseError("Failed to read compressed MusicXML")
+
 class MusicXMLReader:
 
     def __init__(self, filename):
-        self._root = etree.parse(filename).getroot()
+        if zipfile.is_zipfile(filename):
+            self._root = etree.fromstring(readCompressedMusicXML(filename))
+        else:
+            self._root = etree.parse(filename).getroot()
         if self._root.tag != 'score-partwise':
             raise MusicXMLParseError("error: unsupported root element: %s" % self._root.tag)
         self._parts = [x.attrib.get('id')
