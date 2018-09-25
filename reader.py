@@ -150,6 +150,9 @@ class Note:
 
         return (note_name, octave)
 
+    def getAttributes(self):
+        return self._attributes
+
 class Measure:
 
     BARLINE_NORMAL = "NORMAL"

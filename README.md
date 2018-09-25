@@ -17,7 +17,6 @@ supported output format is [FanQie JianPu](http://zhipu.lezhi99.com/Zhipu-index.
 - Multiple parts
 
 # Current Limitations
-- Only the key of C is supported.
 - All parts must be monophonic.
 - Cannot handle change of key signature or time signature in the middle of the
   piece.

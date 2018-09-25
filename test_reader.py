@@ -141,6 +141,7 @@ class TestNote(TestCase):
         self.assertFalse(note.isTupletStart())
         self.assertFalse(note.isTupletStop())
         self.assertFalse(note.isTuplet())
+        self.assertEqual(note.getAttributes(), self.attributes)
 
     def test_pitch(self):
         note = Note(etree.fromstring(

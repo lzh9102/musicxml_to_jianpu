@@ -7,7 +7,11 @@ from writer import *
 class TestGenerateNote(TestCase):
 
     @patch('reader.Note')
-    def setUp(self, MockNote):
+    @patch('reader.Attributes')
+    def setUp(self, MockNote, MockAttributes):
+        attributes = MockAttributes()
+        attributes.getKeySignature.return_value = 'C'
+
         note = MockNote()
         note.isRest.return_value = False
         note.getPitch.return_value = ('C', 4)
@@ -16,6 +20,7 @@ class TestGenerateNote(TestCase):
         note.isTuplet.return_value = False
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = False
+        note.getAttributes.return_value = attributes
         self.note = note
 
     def test_pitches(self):
@@ -132,3 +137,16 @@ class TestGenerateNote(TestCase):
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = False
         self.assertEqual(generateNote(note), "1")
+
+class TestTranspose(TestCase):
+
+    def test_transpose_pitch(self):
+        self.assertEqual(getTransposedPitch('C', 4, offset=3), ('D#', 4))
+        self.assertEqual(getTransposedPitch('D', 4, offset=-3), ('B', 3))
+        self.assertEqual(getTransposedPitch('Bb', 4, offset=2), ('C', 5))
+
+    def test_transpose_offset(self):
+        self.assertEqual(getTransposeOffsetToC('F'), -5)
+        self.assertEqual(getTransposeOffsetToC('C'), 0)
+        self.assertEqual(getTransposeOffsetToC('G'), 5)
+        self.assertEqual(getTransposeOffsetToC('F#'), -6)

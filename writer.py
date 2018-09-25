@@ -56,6 +56,37 @@ def getNoteDisplayedDuration(note):
     else:
         return note.getDuration()
 
+NOTE_DEGREE_TABLE = {
+    'C': 0, 'B#': 0,
+    'C#': 1, 'Db': 1,
+    'D': 2,
+    'D#': 3, 'Eb': 3,
+    'E': 4, 'Fb': 4,
+    'F': 5, 'E#': 5,
+    'F#': 6, 'Gb': 6,
+    'G': 7,
+    'G#': 8, 'Ab': 8,
+    'A': 9,
+    'A#': 10, 'Bb': 10,
+    'B': 11, 'Cb': 11
+}
+
+DEGREE_NOTE_TABLE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+def getTransposedPitch(note_name, octave, offset):
+    degree = NOTE_DEGREE_TABLE[note_name]
+    transposed_degree = degree + offset
+    transposed_octave = octave + transposed_degree // 12
+    transposed_degree %= 12
+    return (DEGREE_NOTE_TABLE[transposed_degree], transposed_octave)
+
+def getTransposeOffsetToC(key):
+    degree = NOTE_DEGREE_TABLE[key]
+    if degree <= 6:
+        return -degree
+    else:
+        return 12 - degree
+
 def generateBasicNote(note):
     (duration, divisions) = getNoteDisplayedDuration(note)
     time_suffix = generateTimeSuffix(duration, divisions)
@@ -64,6 +95,11 @@ def generateBasicNote(note):
     else:
         pitch = note.getPitch()
         (note_name, octave) = note.getPitch()
+
+        keysig = note.getAttributes().getKeySignature()
+        if keysig != 'C':
+            offset = getTransposeOffsetToC(keysig)
+            (note_name, octave) = getTransposedPitch(note_name, octave, offset)
 
         step = note_name[0:1] # C, D, E, F, G, A, B
         accidental = note_name[1:2] # sharp (#) and flat (b)
@@ -146,6 +182,4 @@ class WriterError(Exception):
 class Jianpu99Writer:
 
     def generate(self, reader):
-        if reader.getInitialKeySignature() != 'C':
-            raise WriterError("key other than C is currently not supported")
         return generateHeader(reader) + "\n" + generateBody(reader)
