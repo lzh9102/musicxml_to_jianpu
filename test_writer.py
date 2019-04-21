@@ -20,6 +20,8 @@ class TestGenerateNote(TestCase):
         note.isTuplet.return_value = False
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = False
+        note.isTieStart.return_value = False
+        note.isTieStop.return_value = False
         note.getAttributes.return_value = attributes
         self.note = note
 
@@ -108,6 +110,20 @@ class TestGenerateNote(TestCase):
 
         note.getDuration.return_value = (1, 2)
         self.assertEqual(generateNote(note), "0/")
+
+    def test_tie(self):
+        note = self.note
+        note.getDuration.return_value = (6, 6)
+
+        note.isTieStart.return_value = True
+        self.assertEqual(generateNote(note), "( 1")
+
+        note.isTieStart.return_value = False
+        note.isTieStop.return_value = True
+        self.assertEqual(generateNote(note), "1 )")
+
+        note.getDuration.return_value = (12, 6)
+        self.assertEqual(generateNote(note), "1 ) -")
 
     def test_tuplet(self):
         note = self.note

@@ -110,22 +110,22 @@ def generateBasicNote(note):
 
 def generateNote(note):
     result = generateBasicNote(note)
+    if note.isTieStart():
+        result = "( " + result
     if note.isTupletStart():
         result = "(y" + result
     if note.isTupletStop():
         result = result + ")"
+    if note.isTieStop():
+        if '-' in result: # put ending tie before the first -
+            idx = result.index('-')
+            result = result[:idx] + ") " + result[idx:]
+        else:
+            result = result + " )"
     return result
 
 def generateMeasure(measure):
-    pieces = []
-
-    for note in measure:
-        if note.isTieStart():
-            pieces.append('(')
-        pieces.append(generateNote(note))
-        if note.isTieStop():
-            pieces.append(')')
-
+    pieces = [generateNote(note) for note in measure]
     return ' '.join(pieces)
 
 def generateRightBarline(measure):
