@@ -24,7 +24,8 @@ class Attributes:
         self._cache = {
             'keysig': self._getKeySignature(prev_attributes),
             'timesig': self._getTimeSignature(prev_attributes),
-            'divisions': self._getDivisions(prev_attributes)
+            'divisions': self._getDivisions(prev_attributes),
+            'staves': self._getStaves(prev_attributes),
         }
 
     def _getDivisions(self, prev_attributes):
@@ -52,6 +53,14 @@ class Attributes:
             raise MusicXMLParseError("time not found in attribute")
         return "%s/%s" % (beats.text, beat_type.text)
 
+    def _getStaves(self, prev_attributes):
+        staves = self._elem.find('staves')
+        if staves is None:
+            if prev_attributes:
+                return prev_attributes.getStaves()
+            return 1  # default value
+        return int(staves.text)
+
     def getDivisions(self):
         return self._cache['divisions']
 
@@ -60,6 +69,9 @@ class Attributes:
 
     def getTimeSignature(self):
         return self._cache['timesig']
+
+    def getStaves(self):
+        return self._cache['staves']
 
 ACCIDENTAL_TABLE = {
     'C':  ('#', []),
@@ -77,40 +89,51 @@ ACCIDENTAL_TABLE = {
     'Gb': ('b', ['B', 'E', 'A', 'D', 'G', 'C']),
 }
 
-class Note:
+class Base:
 
-    def __init__(self, elem, attributes):
-        assert(elem.tag == 'note')
+    def __init__(self, elem):
         self._elem = elem
-        self._attributes = attributes
 
-    def _get_int(self, path):
-        return int(self._elem.find(path).text)
+    def _get_int(self, path, default=None):
+        return int(self._get_text(path, str(default)))
 
-    def _get_text(self, path):
+    def _get_bool(self, path):
+        return bool(self._elem.xpath(path))
+
+    def _get_text(self, path, default=None):
         elem = self._elem.find(path)
         if elem is None:
-            return None
+            return default
         else:
             return elem.text
 
+class Note(Base):
+
+    def __init__(self, elem, attributes):
+        assert(elem.tag == 'note')
+        Base.__init__(self, elem)
+        self._attributes = attributes
+
     def isRest(self):
-        return bool(self._elem.xpath('rest'))
+        return self._get_bool('rest')
 
     def isTieStart(self):
-        return bool(self._elem.xpath("tie[@type='start']"))
+        return self._get_bool("tie[@type='start']")
 
     def isTieStop(self):
-        return bool(self._elem.xpath("tie[@type='stop']"))
+        return self._get_bool("tie[@type='stop']")
 
     def isTuplet(self):
-        return bool(self._elem.xpath("time-modification"))
+        return self._get_bool("time-modification")
 
     def isTupletStart(self):
-        return self.isTuplet() and bool(self._elem.xpath("notations/tuplet[@type='start']"))
+        return self.isTuplet() and self._get_bool("notations/tuplet[@type='start']")
 
     def isTupletStop(self):
-        return self.isTuplet() and bool(self._elem.xpath("notations/tuplet[@type='stop']"))
+        return self.isTuplet() and self._get_bool("notations/tuplet[@type='stop']")
+
+    def isChord(self):
+        return self._get_bool('chord')
 
     def getDisplayedDuration(self):
         if not self.isTuplet():
@@ -133,11 +156,17 @@ class Note:
 
         note_name = step.text
         octave = int(octave.text)
-        notated_accidental = self._get_text('accidental')
 
-        notated_sharp = notated_accidental == 'sharp'
-        notated_flat = notated_accidental == 'flat'
-        notated_natural = notated_accidental == 'natural'
+        alter = self._get_text('pitch/alter')
+        if alter is not None:
+            notated_sharp = alter == '1'
+            notated_flat = alter == '-1'
+            notated_natural = alter == '0'
+        else:
+            accidental = self._get_text('accidental')
+            notated_sharp = accidental == 'sharp'
+            notated_flat = accidental == 'flat'
+            notated_natural = accidental == 'natural'
 
         key = self._attributes.getKeySignature()
         key_accidental_char, key_accidental_list = ACCIDENTAL_TABLE[key]
@@ -153,21 +182,31 @@ class Note:
     def getAttributes(self):
         return self._attributes
 
-class Measure:
+    def getStaff(self):
+        return self._get_int('staff', default=1)
+
+    def getVoice(self):
+        return self._get_int('voice', default=1)
+
+def chooseChordTonic(chord):
+    # Note: only support tablature notation for now.
+    return min(chord, key=lambda note:
+        note._get_int('notations/technical/string', default=1000))
+
+class Measure(Base):
 
     BARLINE_NORMAL = "NORMAL"
     BARLINE_DOUBLE = "DOUBLE"
     BARLINE_FINAL = "FINAL"
     BARLINE_REPEAT = "REPEAT"
 
-    def __init__(self, elem, prev_measure=None):
+    def __init__(self, elem, prev_measure=None, staff=1):
         assert(elem.tag == 'measure')
         assert(not prev_measure or isinstance(prev_measure, Measure))
-        self._elem = elem
+        Base.__init__(self, elem)
 
         prev_attributes = prev_measure.getAttributes() if prev_measure else None
         attributes_elem = self._elem.find('attributes')
-
         if not prev_attributes and attributes_elem is None:
             raise MusicXMLParseError("attribute tag not found in first measure")
 
@@ -175,8 +214,31 @@ class Measure:
             self._attributes = Attributes(attributes_elem, prev_attributes)
         else: # no attribute tag; inherit from previous measure
             self._attributes = prev_attributes
-
         assert(self._attributes is not None)
+
+        chords = []
+        for note_elem in self._elem.xpath('note'):
+            note = Note(note_elem, self._attributes)
+            if note.getStaff() != staff:
+                continue  # filter out notes of other staffs
+            if note.isChord():
+                assert(chords)
+                chords[-1].append(note)
+            else:
+                chords.append([note])
+        self._notes = [chooseChordTonic(chord) for chord in chords]
+
+    def isSegno(self):
+        return self._get_bool('direction/sound[@segno]')
+
+    def isDalSegno(self):
+        return self._get_bool('direction/sound[@dalsegno]')
+
+    def isCoda(self):
+        return self._get_bool('direction/sound[@coda]')
+
+    def isToCoda(self):
+        return self._get_bool('direction/sound[@tocoda]')
 
     def getMeasureNumber(self):
         return int(self._elem.get('number'))
@@ -205,8 +267,8 @@ class Measure:
         return self._getBarLine('right')
 
     def __iter__(self):
-        for elem in self._elem.xpath('note'):
-            yield Note(elem, self.getAttributes())
+        for note in self._notes:
+            yield note
 
 def readCompressedMusicXML(filename):
     archive = zipfile.ZipFile(filename)
@@ -216,29 +278,29 @@ def readCompressedMusicXML(filename):
         musicxml_filename = container_root.xpath('rootfiles/rootfile')[0].attrib.get('full-path')
         return archive.read(musicxml_filename)
     except:
-        raise MusicXMLParseError("Failed to read compressed MusicXML")
+        raise MusicXMLParseError("failed to read compressed MusicXML")
 
-class MusicXMLReader:
+class MusicXMLReader(Base):
 
-    def __init__(self, filename):
+    def __init__(self, filename, staff):
         if zipfile.is_zipfile(filename):
-            self._root = etree.fromstring(readCompressedMusicXML(filename))
+            root = etree.fromstring(readCompressedMusicXML(filename))
         else:
-            self._root = etree.parse(filename).getroot()
-        if self._root.tag != 'score-partwise':
-            raise MusicXMLParseError("error: unsupported root element: %s" % self._root.tag)
+            root = etree.parse(filename).getroot()
+        if root.tag != 'score-partwise':
+            raise MusicXMLParseError(f'unsupported root element: {root.tag}')
+
+        Base.__init__(self, root)
+        self._staff = max(staff, 1)  # minimal staff value is 1
         self._parts = [x.attrib.get('id')
-                       for x in self._root.xpath('part-list/score-part')]
+                       for x in root.xpath('part-list/score-part')]
 
-    def _get_text(self, xpath):
-        nodes = self._root.xpath(xpath)
-        if nodes:
-            return nodes[0].text
-        else:
-            return None
+        first_measure = next(self.iterMeasures(self._parts[0]))
+        self._attributes = first_measure.getAttributes()
 
-    def _getFirstMeasure(self):
-        return next(self.iterMeasures(self._parts[0]))
+        staves = self._attributes.getStaves()
+        if staff > staves:  # maximal staff value is staves
+            raise ValueError(f'staff exceeds staves: {staff} vs {staves}')
 
     def getWorkTitle(self):
         return self._get_text('work/work-title')
@@ -247,17 +309,17 @@ class MusicXMLReader:
         return self._get_text("identification/creator[@type='composer']")
 
     def getInitialKeySignature(self):
-        return self._getFirstMeasure().getAttributes().getKeySignature()
+        return self._attributes.getKeySignature()
 
     def getInitialTimeSignature(self):
-        return self._getFirstMeasure().getAttributes().getTimeSignature()
+        return self._attributes.getTimeSignature()
 
     def getPartIdList(self):
         return self._parts
 
     def iterMeasures(self, partId):
         prev_measure = None
-        for elem in self._root.xpath("part[@id='%s']/measure" % partId):
-            measure = Measure(elem, prev_measure)
+        for elem in self._elem.xpath(f"part[@id='{partId}']/measure"):
+            measure = Measure(elem, prev_measure, staff=self._staff)
             yield measure
             prev_measure = measure

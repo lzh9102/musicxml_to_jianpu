@@ -147,10 +147,20 @@ def generateMeasures(measureList):
             else:
                 pieces.append(":")
 
+        if measure.isSegno():
+            pieces.append("&hs")
+        elif measure.isCoda():
+            pieces.append("&ty")
+
         pieces.append(" ")
         pieces.append(generateMeasure(measure))
         pieces.append(" ")
+
         pieces.append(generateRightBarline(measure))
+        if measure.isDalSegno():
+            pieces.append("&ds")
+        elif measure.isToCoda():
+            pieces.append("&ty")
 
     return ''.join(pieces)
 
