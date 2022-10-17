@@ -94,18 +94,22 @@ class Base:
     def __init__(self, elem):
         self._elem = elem
 
-    def _get_int(self, path, default=None):
-        return int(self._get_text(path, str(default)))
+    def _get_int(self, path, text=True, default=None):
+        return int(self._get_text(path, text, str(default)))
+
+    def _get_float(self, path, text=True, default=None):
+        return float(self._get_text(path, text, str(default)))
 
     def _get_bool(self, path):
         return bool(self._elem.xpath(path))
 
-    def _get_text(self, path, default=None):
-        elem = self._elem.find(path)
-        if elem is None:
-            return default
-        else:
-            return elem.text
+    def _get_text(self, path, text=True, default=None):
+        if text:
+            path += '/text()'
+        results = self._elem.xpath(path)
+        if results:
+            return results[0]
+        return default
 
 class Note(Base):
 
@@ -124,13 +128,27 @@ class Note(Base):
         return self._get_bool("tie[@type='stop']")
 
     def isTuplet(self):
-        return self._get_bool("time-modification")
+        return self._get_bool('time-modification')
 
     def isTupletStart(self):
         return self.isTuplet() and self._get_bool("notations/tuplet[@type='start']")
 
     def isTupletStop(self):
         return self.isTuplet() and self._get_bool("notations/tuplet[@type='stop']")
+
+    def isSlide(self):
+        return self._get_bool('notations/slide')
+
+    def isSlideStart(self):
+        return self.isSlide() and self._get_bool("notations/slide[@type='start']")
+
+    def isSlideStop(self):
+        return self.isSlide() and self._get_bool("notations/slide[@type='stop']")
+
+    def isSlideUp(self):
+        y = self._get_float('notations/slide/@default-y', text=False, default=0)
+        y0 = self._get_float('@default-y', text=False, default=0)
+        return y < y0
 
     def isChord(self):
         return self._get_bool('chord')
@@ -188,6 +206,9 @@ class Note(Base):
     def getVoice(self):
         return self._get_int('voice', default=1)
 
+    def getTremolo(self):
+        return self._get_int('notations/ornaments/tremolo', default=0)
+
 def chooseChordTonic(chord):
     # Note: only support tablature notation for now.
     return min(chord, key=lambda note:
@@ -195,10 +216,10 @@ def chooseChordTonic(chord):
 
 class Measure(Base):
 
-    BARLINE_NORMAL = "NORMAL"
-    BARLINE_DOUBLE = "DOUBLE"
-    BARLINE_FINAL = "FINAL"
-    BARLINE_REPEAT = "REPEAT"
+    BARLINE_NORMAL = 'NORMAL'
+    BARLINE_DOUBLE = 'DOUBLE'
+    BARLINE_FINAL = 'FINAL'
+    BARLINE_REPEAT = 'REPEAT'
 
     def __init__(self, elem, prev_measure=None, staff=1):
         assert(elem.tag == 'measure')

@@ -88,10 +88,8 @@ def getTransposeOffsetToC(key):
         return 12 - degree
 
 def generateBasicNote(note):
-    (duration, divisions) = getNoteDisplayedDuration(note)
-    time_suffix = generateTimeSuffix(duration, divisions)
     if note.isRest():
-        return "0" + time_suffix
+        return '0'
     else:
         pitch = note.getPitch()
         (note_name, octave) = note.getPitch()
@@ -106,22 +104,32 @@ def generateBasicNote(note):
         if accidental == 'b':
             accidental = '$' # $ is used to notated flat in this format
 
-        return stepToNumber(step) + accidental + generateOctaveMark(octave) + time_suffix
+        return stepToNumber(step) + accidental + generateOctaveMark(octave)
 
 def generateNote(note):
     result = generateBasicNote(note)
+    value = note.getTremolo()
+    if value > 0:
+        result += '"%s"' % ('/' * value)
+    result += generateTimeSuffix(*getNoteDisplayedDuration(note))
+
     if note.isTieStart():
-        result = "( " + result
+        result = '( ' + result
     if note.isTupletStart():
-        result = "(y" + result
+        result = '(y' + result
     if note.isTupletStop():
-        result = result + ")"
+        result += ')'
+    if note.isSlideStart():
+        if note.isSlideUp():
+            result += '&shy'
+        else:
+            result += '&xhy'
     if note.isTieStop():
         if '-' in result: # put ending tie before the first -
             idx = result.index('-')
-            result = result[:idx] + ") " + result[idx:]
+            result = result[:idx] + ') ' + result[idx:]
         else:
-            result = result + " )"
+            result = result + ' )'
     return result
 
 def generateMeasure(measure):

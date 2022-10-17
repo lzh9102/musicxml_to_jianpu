@@ -20,9 +20,13 @@ class TestGenerateNote(TestCase):
         note.isTuplet.return_value = False
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = False
+        note.isSlide.return_value = False
+        note.isSlideStart.return_value = False
+        note.isSlideStop.return_value = False
         note.isTieStart.return_value = False
         note.isTieStop.return_value = False
         note.getAttributes.return_value = attributes
+        note.getTremolo.return_value = 0
         self.note = note
 
     def test_pitches(self):
