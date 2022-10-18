@@ -221,7 +221,7 @@ class Measure(Base):
     BARLINE_FINAL = 'FINAL'
     BARLINE_REPEAT = 'REPEAT'
 
-    def __init__(self, elem, prev_measure=None, staff=1):
+    def __init__(self, elem, prev_measure=None, staff=1, keep_chords=False):
         assert(elem.tag == 'measure')
         assert(not prev_measure or isinstance(prev_measure, Measure))
         Base.__init__(self, elem)
@@ -247,7 +247,10 @@ class Measure(Base):
                 chords[-1].append(note)
             else:
                 chords.append([note])
-        self._notes = [chooseChordTonic(chord) for chord in chords]
+        if keep_chords:
+            self._notes = chords
+        else:
+            self._notes = [chooseChordTonic(chord) for chord in chords]
 
     def isSegno(self):
         return self._get_bool('direction/sound[@segno]')
@@ -266,6 +269,9 @@ class Measure(Base):
 
     def getAttributes(self):
         return self._attributes
+
+    def getNotes(self):
+        return self._notes
 
     def _getBarLine(self, location):
         bar_style = self._elem.xpath('barline[@location="%s"]/bar-style' % location)
@@ -303,7 +309,7 @@ def readCompressedMusicXML(filename):
 
 class MusicXMLReader(Base):
 
-    def __init__(self, filename, staff):
+    def __init__(self, filename, staff=1, keep_chords=False):
         if zipfile.is_zipfile(filename):
             root = etree.fromstring(readCompressedMusicXML(filename))
         else:
@@ -313,6 +319,7 @@ class MusicXMLReader(Base):
 
         Base.__init__(self, root)
         self._staff = max(staff, 1)  # minimal staff value is 1
+        self._keep_chords = keep_chords
         self._parts = [x.attrib.get('id')
                        for x in root.xpath('part-list/score-part')]
 
@@ -341,6 +348,7 @@ class MusicXMLReader(Base):
     def iterMeasures(self, partId):
         prev_measure = None
         for elem in self._elem.xpath(f"part[@id='{partId}']/measure"):
-            measure = Measure(elem, prev_measure, staff=self._staff)
+            measure = Measure(elem, prev_measure, staff=self._staff,
+                              keep_chords=self._keep_chords)
             yield measure
             prev_measure = measure
