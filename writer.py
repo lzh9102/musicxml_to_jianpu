@@ -3,6 +3,12 @@
 from fractions import Fraction
 from reader import Measure
 
+class WriterOptions:
+
+    def __init__(self):
+        self.ignore_key = False
+        self.max_measures_per_line = 4
+
 STEP_TO_NUMBER = {
     'C': 1,
     'D': 2,
@@ -33,9 +39,13 @@ def generateTimeSuffix(duration, divisions):
     else: # sustained more than 1.5 quarter notes: add - and continue
         return " -" + generateTimeSuffix(duration - divisions, divisions)
 
-def generateHeader(reader):
+def generateHeader(options, reader):
     title = reader.getWorkTitle()
-    key = reader.getInitialKeySignature().replace('b', '$') # flat is represented by '$' in this format
+    if options.ignore_key:
+        key = 'C'
+    else:
+        # flat is represented by '$' in this format
+        key = reader.getInitialKeySignature().replace('b', '$')
     time = reader.getInitialTimeSignature()
 
     header = "V: 1.0\n" # jianpu99 version number
@@ -87,17 +97,18 @@ def getTransposeOffsetToC(key):
     else:
         return 12 - degree
 
-def generateBasicNote(note):
+def generateBasicNote(options, note):
     if note.isRest():
         return '0'
     else:
         pitch = note.getPitch()
         (note_name, octave) = note.getPitch()
 
-        keysig = note.getAttributes().getKeySignature()
-        if keysig != 'C':
-            offset = getTransposeOffsetToC(keysig)
-            (note_name, octave) = getTransposedPitch(note_name, octave, offset)
+        if not options.ignore_key:
+            keysig = note.getAttributes().getKeySignature()
+            if keysig != 'C':
+                offset = getTransposeOffsetToC(keysig)
+                (note_name, octave) = getTransposedPitch(note_name, octave, offset)
 
         step = note_name[0:1] # C, D, E, F, G, A, B
         accidental = note_name[1:2] # sharp (#) and flat (b)
@@ -106,8 +117,8 @@ def generateBasicNote(note):
 
         return stepToNumber(step) + accidental + generateOctaveMark(octave)
 
-def generateNote(note):
-    result = generateBasicNote(note)
+def generateNote(options, note):
+    result = generateBasicNote(options, note)
     value = note.getTremolo()
     if value > 0:
         result += '"%s"' % ('/' * value)
@@ -132,11 +143,11 @@ def generateNote(note):
             result = result + ' )'
     return result
 
-def generateMeasure(measure):
-    pieces = [generateNote(note) for note in measure]
+def generateMeasure(options, measure):
+    pieces = [generateNote(options, note) for note in measure]
     return ' '.join(pieces)
 
-def generateRightBarline(measure):
+def generateRightBarline(options, measure):
     if measure.getRightBarlineType() == Measure.BARLINE_REPEAT:
         return ":|"
     elif measure.getRightBarlineType() == Measure.BARLINE_DOUBLE:
@@ -146,7 +157,7 @@ def generateRightBarline(measure):
     else:
         return "|"
 
-def generateMeasures(measureList):
+def generateMeasures(options, measureList):
     pieces = []
     for i, measure in enumerate(measureList):
         if measure.getLeftBarlineType() == Measure.BARLINE_REPEAT:
@@ -161,10 +172,10 @@ def generateMeasures(measureList):
             pieces.append("&ty")
 
         pieces.append(" ")
-        pieces.append(generateMeasure(measure))
+        pieces.append(generateMeasure(options, measure))
         pieces.append(" ")
 
-        pieces.append(generateRightBarline(measure))
+        pieces.append(generateRightBarline(options, measure))
         if measure.isDalSegno():
             pieces.append("&ds")
         elif measure.isToCoda():
@@ -172,8 +183,7 @@ def generateMeasures(measureList):
 
     return ''.join(pieces)
 
-def generateBody(reader, max_measures_per_line=4):
-
+def generateBody(options, reader):
     parts = reader.getPartIdList()
 
     part_measures = dict()
@@ -183,12 +193,14 @@ def generateBody(reader, max_measures_per_line=4):
     lines = []
 
     measure_count = max(len(measures) for measures in part_measures.values())
-    for i in range(0, measure_count, max_measures_per_line):
+    for i in range(0, measure_count, options.max_measures_per_line):
         begin = i
-        end = min(i + max_measures_per_line, measure_count)
+        end = min(i + options.max_measures_per_line, measure_count)
         for part_index, part in enumerate(parts):
-            line = "Q%d: " % (part_index + 1)
-            line += generateMeasures(part_measures[part][begin:end])
+            s = ''
+            if len(parts) > 1:
+                s = str(part_index + 1)
+            line = f'Q{s}: ' + generateMeasures(options, part_measures[part][begin:end])
             lines.append(line)
         lines.append('') # empty line
 
@@ -199,5 +211,11 @@ class WriterError(Exception):
 
 class Jianpu99Writer:
 
+    def __init__(self, ignore_key=None):
+        self._options = WriterOptions()
+        if ignore_key is not None:
+            self._options.ignore_key = ignore_key
+
     def generate(self, reader):
-        return generateHeader(reader) + "\n" + generateBody(reader)
+        return (generateHeader(self._options, reader) + '\n' +
+                generateBody(self._options, reader))

@@ -214,6 +214,12 @@ def chooseChordTonic(chord):
     return min(chord, key=lambda note:
         note._get_int('notations/technical/string', default=1000))
 
+class ReaderOptions:
+
+    def __init__(self):
+        self.staff = 1
+        self.keep_chords = False
+
 class Measure(Base):
 
     BARLINE_NORMAL = 'NORMAL'
@@ -221,10 +227,15 @@ class Measure(Base):
     BARLINE_FINAL = 'FINAL'
     BARLINE_REPEAT = 'REPEAT'
 
-    def __init__(self, elem, prev_measure=None, staff=1, keep_chords=False):
+    _default_options = ReaderOptions()
+
+    def __init__(self, elem, prev_measure=None, options = None):
         assert(elem.tag == 'measure')
         assert(not prev_measure or isinstance(prev_measure, Measure))
         Base.__init__(self, elem)
+
+        if options is None:
+            options = Measure._default_options
 
         prev_attributes = prev_measure.getAttributes() if prev_measure else None
         attributes_elem = self._elem.find('attributes')
@@ -240,14 +251,14 @@ class Measure(Base):
         chords = []
         for note_elem in self._elem.xpath('note'):
             note = Note(note_elem, self._attributes)
-            if note.getStaff() != staff:
+            if note.getStaff() != options.staff:
                 continue  # filter out notes of other staffs
             if note.isChord():
                 assert(chords)
                 chords[-1].append(note)
             else:
                 chords.append([note])
-        if keep_chords:
+        if options.keep_chords:
             self._notes = chords
         else:
             self._notes = [chooseChordTonic(chord) for chord in chords]
@@ -309,7 +320,7 @@ def readCompressedMusicXML(filename):
 
 class MusicXMLReader(Base):
 
-    def __init__(self, filename, staff=1, keep_chords=False):
+    def __init__(self, filename, staff=None, keep_chords=None):
         if zipfile.is_zipfile(filename):
             root = etree.fromstring(readCompressedMusicXML(filename))
         else:
@@ -318,8 +329,12 @@ class MusicXMLReader(Base):
             raise MusicXMLParseError(f'unsupported root element: {root.tag}')
 
         Base.__init__(self, root)
-        self._staff = max(staff, 1)  # minimal staff value is 1
-        self._keep_chords = keep_chords
+        self._options = ReaderOptions()
+        if staff is not None:
+            self._options.staff = max(staff, 1)  # minimal staff value is 1
+        if keep_chords is not None:
+            self._options.keep_cords = keep_chords
+
         self._parts = [x.attrib.get('id')
                        for x in root.xpath('part-list/score-part')]
 
@@ -348,7 +363,6 @@ class MusicXMLReader(Base):
     def iterMeasures(self, partId):
         prev_measure = None
         for elem in self._elem.xpath(f"part[@id='{partId}']/measure"):
-            measure = Measure(elem, prev_measure, staff=self._staff,
-                              keep_chords=self._keep_chords)
+            measure = Measure(elem, prev_measure, self._options)
             yield measure
             prev_measure = measure
