@@ -23,7 +23,7 @@ class Attributes:
         self._elem = elem
         self._cache = {
             'keysig': self._getKeySignature(prev_attributes),
-            'timesig': self._getTimeSignature(prev_attributes),
+            'time' : self._getTime(prev_attributes),
             'divisions': self._getDivisions(prev_attributes),
             'staves': self._getStaves(prev_attributes),
         }
@@ -44,15 +44,15 @@ class Attributes:
             raise MusicXMLParseError("fifths not found in attribute")
         return MUSICXML_FIFTHS_TABLE[int(fifths.text)]
 
-    def _getTimeSignature(self, prev_attributes):
+    def _getTime(self, prev_attributes):
         beats = self._elem.find('time/beats')
         beat_type = self._elem.find('time/beat-type')
         if beats is None or beat_type is None:
             if prev_attributes:
-                return prev_attributes.getTimeSignature()
+                return prev_attributes.getTime()
             raise MusicXMLParseError("time not found in attribute")
-        return "%s/%s" % (beats.text, beat_type.text)
-
+        return int(beats.text), int(beat_type.text)
+ 
     def _getStaves(self, prev_attributes):
         staves = self._elem.find('staves')
         if staves is None:
@@ -67,8 +67,11 @@ class Attributes:
     def getKeySignature(self):
         return self._cache['keysig']
 
+    def getTime(self):
+        return self._cache['time']
+
     def getTimeSignature(self):
-        return self._cache['timesig']
+        return '%d/%d' % self.getTime()
 
     def getStaves(self):
         return self._cache['staves']
@@ -94,17 +97,17 @@ class Base:
     def __init__(self, elem):
         self._elem = elem
 
-    def _get_int(self, path, text=True, default=None):
-        return int(self._get_text(path, text, str(default)))
+    def _get_int(self, path, default=None):
+        return int(self._get_text(path, str(default)))
 
-    def _get_float(self, path, text=True, default=None):
-        return float(self._get_text(path, text, str(default)))
+    def _get_float(self, path, default=None):
+        return float(self._get_text(path, str(default)))
 
     def _get_bool(self, path):
         return bool(self._elem.xpath(path))
 
-    def _get_text(self, path, text=True, default=None):
-        if text:
+    def _get_text(self, path, default=None):
+        if not path.split('/')[-1].startswith('@'):
             path += '/text()'
         results = self._elem.xpath(path)
         if results:
@@ -146,8 +149,8 @@ class Note(Base):
         return self.isSlide() and self._get_bool("notations/slide[@type='stop']")
 
     def isSlideUp(self):
-        y = self._get_float('notations/slide/@default-y', text=False, default=0)
-        y0 = self._get_float('@default-y', text=False, default=0)
+        y = self._get_float('notations/slide/@default-y', default=0)
+        y0 = self._get_float('@default-y', default=0)
         return y < y0
 
     def isChord(self):
@@ -278,6 +281,13 @@ class Measure(Base):
     def getMeasureNumber(self):
         return int(self._elem.get('number'))
 
+    def getBeatsPerMinute(self):
+        tempo = self._get_text('direction/sound/@tempo')
+        if tempo is None:
+            return None
+        _, beat_type = self._attributes.getTime()
+        return round(float(tempo) * beat_type / 4)
+
     def getAttributes(self):
         return self._attributes
 
@@ -339,9 +349,10 @@ class MusicXMLReader(Base):
                        for x in root.xpath('part-list/score-part')]
 
         first_measure = next(self.iterMeasures(self._parts[0]))
-        self._attributes = first_measure.getAttributes()
+        self._initial_attributes = first_measure.getAttributes()
+        self._initial_beats_per_minute = first_measure.getBeatsPerMinute()
 
-        staves = self._attributes.getStaves()
+        staves = self._initial_attributes.getStaves()
         if staff > staves:  # maximal staff value is staves
             raise ValueError(f'staff exceeds staves: {staff} vs {staves}')
 
@@ -352,10 +363,13 @@ class MusicXMLReader(Base):
         return self._get_text("identification/creator[@type='composer']")
 
     def getInitialKeySignature(self):
-        return self._attributes.getKeySignature()
+        return self._initial_attributes.getKeySignature()
 
     def getInitialTimeSignature(self):
-        return self._attributes.getTimeSignature()
+        return self._initial_attributes.getTimeSignature()
+
+    def getInitialBeatsPerMinute(self):
+        return self._initial_beats_per_minute
 
     def getPartIdList(self):
         return self._parts

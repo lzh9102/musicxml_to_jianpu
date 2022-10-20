@@ -47,16 +47,19 @@ def generateHeader(options, reader):
         # flat is represented by '$' in this format
         key = reader.getInitialKeySignature().replace('b', '$')
     time = reader.getInitialTimeSignature()
+    bpm = reader.getInitialBeatsPerMinute()
 
-    header = "V: 1.0\n" # jianpu99 version number
-    if title:
-        header += "B: %s\n" % title
-    header += "D: %s\n" % key
-    header += "P: %s\n" % time
+    header = 'V: 1.0\n'  # jianpu99 version number
+    if title is not None:
+        header += f'B: {title}\n'
+    header += f'D: {key}\n'
+    header += f'P: {time}\n'
+    if bpm is not None:
+        header += f'J: {bpm}\n'
 
     composer = reader.getComposer()
-    if composer:
-        header += "Z: %s\n" % composer
+    if composer is not None:
+        header += f'Z: {composer}\n'
 
     return header
 
