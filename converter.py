@@ -3,16 +3,20 @@
 import argparse
 
 from reader import MusicXMLReader, MusicXMLParseError
-from writer import Jianpu99Writer, WriterError
+from writer import WriterError, createWriter, getGrammars
 
 def parseArguments():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('input_file', help="input file in MusicXML format")
+    parser.add_argument('--grammar', choices=getGrammars(),
+                        default=getGrammars()[0],
+                        help="Which grammar to use in writing")
     parser.add_argument('--staff', type=int, default=1,
-                        help="Which staff to convert (default: 1)")
+                        help="Which staff to convert")
     parser.add_argument('--ignore_key', type=bool, default=False,
                         action=argparse.BooleanOptionalAction,
-                        help="Whethere to ignore key signature (default: False)")
+                        help="Whethere to ignore key signature")
     return parser.parse_args()
 
 
@@ -20,7 +24,7 @@ if __name__ == "__main__":
     args = parseArguments()
 
     reader = MusicXMLReader(args.input_file, args.staff)
-    writer = Jianpu99Writer(args.ignore_key)
+    writer = createWriter(args.grammar, ignore_key=args.ignore_key)
 
     try:
         print(writer.generate(reader))

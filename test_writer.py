@@ -15,7 +15,6 @@ class TestGenerateNote(TestCase):
         note = MockNote()
         note.isRest.return_value = False
         note.getPitch.return_value = ('C', 4)
-        note.getDuration.return_value = (2, 2)
         note.getDisplayedDuration.return_value = (2, 2)
         note.isTuplet.return_value = False
         note.isTupletStart.return_value = False
@@ -29,140 +28,134 @@ class TestGenerateNote(TestCase):
         note.getTremolo.return_value = 0
         self.note = note
 
+        self.writer = Jianpu99Writer()
+
     def test_pitches(self):
-        options = WriterOptions()
         note = self.note
 
         note.getPitch.return_value = ('C', 4)
-        self.assertEqual(generateNote(options, note), "1")
+        self.assertEqual(self.writer.generateNote(note), "1")
         note.getPitch.return_value = ('D', 4)
-        self.assertEqual(generateNote(options, note), "2")
+        self.assertEqual(self.writer.generateNote(note), "2")
         note.getPitch.return_value = ('E', 4)
-        self.assertEqual(generateNote(options, note), "3")
+        self.assertEqual(self.writer.generateNote(note), "3")
         note.getPitch.return_value = ('F', 4)
-        self.assertEqual(generateNote(options, note), "4")
+        self.assertEqual(self.writer.generateNote(note), "4")
         note.getPitch.return_value = ('G', 4)
-        self.assertEqual(generateNote(options, note), "5")
+        self.assertEqual(self.writer.generateNote(note), "5")
         note.getPitch.return_value = ('A', 4)
-        self.assertEqual(generateNote(options, note), "6")
+        self.assertEqual(self.writer.generateNote(note), "6")
         note.getPitch.return_value = ('B', 4)
-        self.assertEqual(generateNote(options, note), "7")
+        self.assertEqual(self.writer.generateNote(note), "7")
         note.getPitch.return_value = ('C', 5)
 
         # dot over note
-        self.assertEqual(generateNote(options, note), "1'")
+        self.assertEqual(self.writer.generateNote(note), "1'")
         note.getPitch.return_value = ('D', 5)
-        self.assertEqual(generateNote(options, note), "2'")
+        self.assertEqual(self.writer.generateNote(note), "2'")
         note.getPitch.return_value = ('E', 5)
-        self.assertEqual(generateNote(options, note), "3'")
+        self.assertEqual(self.writer.generateNote(note), "3'")
         note.getPitch.return_value = ('C', 6)
-        self.assertEqual(generateNote(options, note), "1''")
+        self.assertEqual(self.writer.generateNote(note), "1''")
 
         # dot under note
         note.getPitch.return_value = ('B', 3)
-        self.assertEqual(generateNote(options, note), "7,")
+        self.assertEqual(self.writer.generateNote(note), "7,")
         note.getPitch.return_value = ('A', 3)
-        self.assertEqual(generateNote(options, note), "6,")
+        self.assertEqual(self.writer.generateNote(note), "6,")
 
     def test_accidentals(self):
-        options = WriterOptions()
         note = self.note
 
         note.getPitch.return_value = ('A#', 5)
-        self.assertEqual(generateNote(options, note), "6#'")
+        self.assertEqual(self.writer.generateNote(note), "6#'")
         note.getPitch.return_value = ('Eb', 3)
-        self.assertEqual(generateNote(options, note), "3$,")
+        self.assertEqual(self.writer.generateNote(note), "3$,")
 
     def test_durations(self):
-        options = WriterOptions()
         note = self.note
 
-        note.getDuration.return_value = (2, 2)
-        self.assertEqual(generateNote(options, note), "1")
+        note.getDisplayedDuration.return_value = (2, 2)
+        self.assertEqual(self.writer.generateNote(note), "1")
 
-        note.getDuration.return_value = (4, 2)
-        self.assertEqual(generateNote(options, note), "1 -")
+        note.getDisplayedDuration.return_value = (4, 2)
+        self.assertEqual(self.writer.generateNote(note), "1 -")
 
-        note.getDuration.return_value = (6, 2)
-        self.assertEqual(generateNote(options, note), "1 - -")
+        note.getDisplayedDuration.return_value = (6, 2)
+        self.assertEqual(self.writer.generateNote(note), "1 - -")
 
-        note.getDuration.return_value = (8, 2)
-        self.assertEqual(generateNote(options, note), "1 - - -")
+        note.getDisplayedDuration.return_value = (8, 2)
+        self.assertEqual(self.writer.generateNote(note), "1 - - -")
 
-        note.getDuration.return_value = (1, 2)
-        self.assertEqual(generateNote(options, note), "1/")
+        note.getDisplayedDuration.return_value = (1, 2)
+        self.assertEqual(self.writer.generateNote(note), "1/")
 
-        note.getDuration.return_value = (1, 4)
-        self.assertEqual(generateNote(options, note), "1//")
+        note.getDisplayedDuration.return_value = (1, 4)
+        self.assertEqual(self.writer.generateNote(note), "1//")
 
-        note.getDuration.return_value = (1, 8)
-        self.assertEqual(generateNote(options, note), "1///")
+        note.getDisplayedDuration.return_value = (1, 8)
+        self.assertEqual(self.writer.generateNote(note), "1///")
 
         # syncopated notes
 
-        note.getDuration.return_value = (3, 2)
-        self.assertEqual(generateNote(options, note), "1.")
+        note.getDisplayedDuration.return_value = (3, 2)
+        self.assertEqual(self.writer.generateNote(note), "1.")
 
-        note.getDuration.return_value = (3, 4)
-        self.assertEqual(generateNote(options, note), "1./")
+        note.getDisplayedDuration.return_value = (3, 4)
+        self.assertEqual(self.writer.generateNote(note), "1./")
 
     def test_rest(self):
-        options = WriterOptions()
         note = self.note
 
         note.isRest.return_value = True
-        self.assertEqual(generateNote(options, note), "0")
+        self.assertEqual(self.writer.generateNote(note), "0")
 
-        note.getDuration.return_value = (4, 2)
-        self.assertEqual(generateNote(options, note), "0 -")
+        note.getDisplayedDuration.return_value = (4, 2)
+        self.assertEqual(self.writer.generateNote(note), "0 -")
 
-        note.getDuration.return_value = (1, 2)
-        self.assertEqual(generateNote(options, note), "0/")
+        note.getDisplayedDuration.return_value = (1, 2)
+        self.assertEqual(self.writer.generateNote(note), "0/")
 
     def test_tie(self):
-        options = WriterOptions()
         note = self.note
-        note.getDuration.return_value = (6, 6)
+        note.getDisplayedDuration.return_value = (6, 6)
 
         note.isTieStart.return_value = True
-        self.assertEqual(generateNote(options, note), "( 1")
+        self.assertEqual(self.writer.generateNote(note), "( 1")
 
         note.isTieStart.return_value = False
         note.isTieStop.return_value = True
-        self.assertEqual(generateNote(options, note), "1 )")
+        self.assertEqual(self.writer.generateNote(note), "1 )")
 
-        note.getDuration.return_value = (12, 6)
-        self.assertEqual(generateNote(options, note), "1 ) -")
+        note.getDisplayedDuration.return_value = (12, 6)
+        self.assertEqual(self.writer.generateNote(note), "1 ) -")
 
     def test_tuplet(self):
-        options = WriterOptions()
         note = self.note
 
         note.isTuplet.return_value = True
-        note.getDuration.return_value = (2, 6) # 3 notes in 1 beats
         note.getDisplayedDuration.return_value = (3, 6)
 
         # tuplet start
         note.isTupletStart.return_value = True
         note.isTupletStop.return_value = False
-        self.assertEqual(generateNote(options, note), "(y1/")
+        self.assertEqual(self.writer.generateNote(note), "(y1/")
 
         # tuplet middle notes
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = False
-        self.assertEqual(generateNote(options, note), "1/")
+        self.assertEqual(self.writer.generateNote(note), "1/")
 
         # tuplet stop
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = True
-        self.assertEqual(generateNote(options, note), "1/)")
+        self.assertEqual(self.writer.generateNote(note), "1/)")
 
         # 3 notes in 2 beats, should be displayed as quarter notes
-        note.getDuration.return_value = (4, 6)
         note.getDisplayedDuration.return_value = (6, 6)
         note.isTupletStart.return_value = False
         note.isTupletStop.return_value = False
-        self.assertEqual(generateNote(options, note), "1")
+        self.assertEqual(self.writer.generateNote(note), "1")
 
 class TestTranspose(TestCase):
 

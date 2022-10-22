@@ -70,9 +70,6 @@ class Attributes:
     def getTime(self):
         return self._cache['time']
 
-    def getTimeSignature(self):
-        return '%d/%d' % self.getTime()
-
     def getStaves(self):
         return self._cache['staves']
 
@@ -281,12 +278,11 @@ class Measure(Base):
     def getMeasureNumber(self):
         return int(self._elem.get('number'))
 
-    def getBeatsPerMinute(self):
-        tempo = self._get_text('direction/sound/@tempo')
-        if tempo is None:
-            return None
-        _, beat_type = self._attributes.getTime()
-        return round(float(tempo) * beat_type / 4)
+    def getTempo(self):
+        return self._get_float('direction/sound/@tempo', default=0)
+
+    def getDalSegno(self):
+        return self._get_text('direction[sound[@dalsegno]]/direction-type/words')
 
     def getAttributes(self):
         return self._attributes
@@ -350,7 +346,12 @@ class MusicXMLReader(Base):
 
         first_measure = next(self.iterMeasures(self._parts[0]))
         self._initial_attributes = first_measure.getAttributes()
-        self._initial_beats_per_minute = first_measure.getBeatsPerMinute()
+        self._initial_tempo = first_measure.getTempo()
+
+        self._pickup = 0
+        for note in first_measure.getNotes():
+            nom, denom = note.getDisplayedDuration()
+            self._pickup += nom / denom
 
         staves = self._initial_attributes.getStaves()
         if staff > staves:  # maximal staff value is staves
@@ -365,11 +366,14 @@ class MusicXMLReader(Base):
     def getInitialKeySignature(self):
         return self._initial_attributes.getKeySignature()
 
-    def getInitialTimeSignature(self):
-        return self._initial_attributes.getTimeSignature()
+    def getInitialTime(self):
+        return self._initial_attributes.getTime()
 
-    def getInitialBeatsPerMinute(self):
-        return self._initial_beats_per_minute
+    def getInitialTempo(self):
+        return self._initial_tempo
+
+    def getPickup(self):
+        return self._pickup
 
     def getPartIdList(self):
         return self._parts
