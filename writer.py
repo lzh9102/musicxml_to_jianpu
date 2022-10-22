@@ -302,7 +302,8 @@ def wrapLy(s):
     return f'\nLP:\n{s}\n:LP\n'
 
 def wrapLyMark(s, raw=False, down=False):
-    result = r'\mark \markup { \sans \bold \fontsize #-4 {%s} }' % s
+    result = (r'\once \override Score.RehearsalMark.break-visibility = #begin-of-line-invisible '
+              r'\mark \markup { \sans \bold \fontsize #-5 {%s} }' % s)
     if down:
         result = r'\once \override Score.RehearsalMark.direction = #DOWN ' + result
     if not raw:
@@ -339,8 +340,8 @@ class JianpuLyWriter(BaseWriter):
 
         ly_lines = [
             r'\set Score.barNumberVisibility = #all-bar-numbers-visible',
+            r'\override Score.BarNumber.font-size = #-6',
             r'\override Score.BarNumber.break-visibility = #end-of-line-invisible',
-            r'\override Score.RehearsalMark.break-visibility = #begin-of-line-invisible',
         ]
         if anac:
             ly_lines.append(r'\set Score.currentBarNumber = #2')
