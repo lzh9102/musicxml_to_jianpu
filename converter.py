@@ -17,6 +17,8 @@ def parseArguments():
     parser.add_argument('--ignore_key', type=bool, default=False,
                         action=argparse.BooleanOptionalAction,
                         help="Whethere to ignore key signature")
+    parser.add_argument('--notes_per_line', type=int, default=0,
+                        help="Expected number of notes per line if non-zero")
     return parser.parse_args()
 
 
@@ -24,7 +26,9 @@ if __name__ == "__main__":
     args = parseArguments()
 
     reader = MusicXMLReader(args.input_file, args.staff)
-    writer = createWriter(args.grammar, ignore_key=args.ignore_key)
+    writer = createWriter(args.grammar,
+                          ignore_key=args.ignore_key,
+                          notes_per_line=args.notes_per_line)
 
     try:
         print(writer.generate(reader))

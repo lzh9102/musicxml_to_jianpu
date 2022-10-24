@@ -291,8 +291,8 @@ class Measure(Base):
         return self._notes
 
     def _getBarLine(self, location):
-        bar_style = self._elem.xpath('barline[@location="%s"]/bar-style' % location)
-        repeat = self._elem.xpath('barline[@location="%s"]/repeat' % location)
+        bar_style = self._elem.xpath(f'barline[@location="{location}"]/bar-style')
+        repeat = self._elem.xpath(f'barline[@location="{location}"]/repeat')
         if not bar_style:
             return Measure.BARLINE_NORMAL
         elif repeat:

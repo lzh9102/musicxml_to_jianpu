@@ -68,6 +68,8 @@ class WriterOptions:
     def __init__(self):
         self.ignore_key = False
         self.max_measures_per_line = 4
+        self.min_measures_per_line = 2
+        self.notes_per_line = 0  # rough hint, or disabled if 0
 
 class WriterDict:
 
@@ -134,9 +136,10 @@ class BaseWriter:
         lines = []
 
         measure_count = max(len(measures) for measures in part_measures.values())
-        for i in range(0, measure_count, self._options.max_measures_per_line):
+        num_measures_per_line = self.computeNumMeasuresPerLine(part_measures.values())
+        for i in range(0, measure_count, num_measures_per_line):
             begin = i
-            end = min(i + self._options.max_measures_per_line, measure_count)
+            end = min(i + num_measures_per_line, measure_count)
             for part_index, part in enumerate(parts):
                 line = self.toLinePrefix(part_index, len(parts))
                 line += self.generateMeasures(part_measures[part][begin:end])
@@ -213,6 +216,23 @@ class BaseWriter:
             prefix, suffix = self.generateTimePrefixAndSuffix(duration - divisions, divisions)
             return prefix, ' -' + suffix
 
+    def computeNumMeasuresPerLine(self, collection_of_measures, cutoff=2):
+        result = self._options.max_measures_per_line
+        if self._options.notes_per_line > 0:
+            for measures in collection_of_measures:
+                num_measures = 0
+                num_notes = 0
+                for measure in measures:
+                    count = len(measure.getNotes())
+                    if count > cutoff:
+                        num_measures += 1
+                        num_notes += count
+                if num_notes > 0:
+                    value = round(self._options.notes_per_line * num_measures / num_notes)
+                    result = min(result, value)
+            result = max(result, self._options.min_measures_per_line)
+        return result
+            
 class Jianpu99Writer(BaseWriter):
 
     def __init__(self, *args, **kwds):
