@@ -362,6 +362,7 @@ class JianpuLyWriter(BaseWriter):
             r'\set Score.barNumberVisibility = #all-bar-numbers-visible',
             r'\override Score.BarNumber.font-size = #-6',
             r'\override Score.BarNumber.break-visibility = #end-of-line-invisible',
+            r'\override Score.NonMusicalPaperColumn.padding = #2',
         ]
         if anac:
             ly_lines.append(r'\set Score.currentBarNumber = #2')
@@ -372,7 +373,7 @@ class JianpuLyWriter(BaseWriter):
         return accidental + step + octave_mark
 
     def toTremolo(self, tremolo):
-        return wrapLy(fr"-\tweak #'Y-offset #-4.8 -\tweak #'X-offset #0.6 :{4 * 2 ** tremolo}")
+        return wrapLy(fr"-\tweak #'Y-offset #-4.0 -\tweak #'X-offset #0.6 :{4 * 2 ** tremolo}")
 
     def toSlide(self, text, slide_up):
         y = [2, -1]
@@ -394,21 +395,17 @@ class JianpuLyWriter(BaseWriter):
         raise ValueError('Too short a note duration')
 
     def toLeftBarline(self, index, measure):
-        result = ''
         ly_lines = []
         if measure.getLeftBarlineType() == Measure.BARLINE_REPEAT:
             ly_lines.append(r'\bar ".|:"')
 
         if self.right_after_final_bar:  # add an invisible measure
-            ly_lines = [
-                r'\override Voice.Rest.color = "white"',
-                r'\once \override Score.BarNumber.break-visibility = ##(#f #f #f)',
-            ] + ly_lines
             beats, beat_type = measure.getAttributes().getTime()
-            result += wrapLy(ly_lines) + ' 0 ' + '- ' * (beats * 4 // beat_type - 1)
             ly_lines = [
+                r'\once \override Score.BarNumber.break-visibility = ##(#f #f #f)',
+                ' s4' * (beats * 4 // beat_type)
+            ] + ly_lines + [
                 r'\bar "|"',
-                r'\revert Voice.Rest.color',
                 fr'\set Score.currentBarNumber = #{measure.getMeasureNumber()}',
             ]
             self.right_after_final_bar = False
@@ -417,7 +414,7 @@ class JianpuLyWriter(BaseWriter):
             ly_lines.append(wrapLyMark(r'\musicglyph #"scripts.segno"', raw=True))
         elif measure.isCoda():
             ly_lines.append(wrapLyMark(r'\musicglyph #"scripts.coda"', raw=True))
-        return result + wrapLy(ly_lines)
+        return wrapLy(ly_lines)
 
     def toRightBarline(self, measure):
         ly_lines = []
