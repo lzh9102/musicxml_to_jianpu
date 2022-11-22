@@ -14,3 +14,4 @@ done
 rm tmp.*.txt
 
 echo "$total run, $passed passed"
+[ $total -eq $passed ]  # Exit with error status if not all tests passed.
