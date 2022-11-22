@@ -35,25 +35,25 @@ class TestMeasure(TestCase):
         a1 = attributes[0]
         self.assertEqual(a1.getDivisions(), 2)
         self.assertEqual(a1.getKeySignature(), 'C')
-        self.assertEqual(a1.getTimeSignature(), '4/4')
+        self.assertEqual(a1.getTime(), (4, 4))
 
         # measure 2 should inherit attributes from measure 1
         a2 = attributes[1]
         self.assertEqual(a2.getDivisions(), 2)
         self.assertEqual(a2.getKeySignature(), 'C')
-        self.assertEqual(a2.getTimeSignature(), '4/4')
+        self.assertEqual(a2.getTime(), (4, 4))
 
         # measure 3: attribute update
         a3 = attributes[2]
         self.assertEqual(a3.getDivisions(), 4)
         self.assertEqual(a3.getKeySignature(), 'D')
-        self.assertEqual(a3.getTimeSignature(), '6/8')
+        self.assertEqual(a3.getTime(), (6, 8))
 
         # measure 4: partial attribute update (only key signature changes)
         a4 = attributes[3]
         self.assertEqual(a4.getDivisions(), 4)
         self.assertEqual(a4.getKeySignature(), 'A')
-        self.assertEqual(a4.getTimeSignature(), '6/8')
+        self.assertEqual(a4.getTime(), (6, 8))
 
     def test_iterNotes(self):
         measure1_notes = [note for note in self.measures[0]]
@@ -119,7 +119,7 @@ class TestNote(TestCase):
         attributes = MockAttributes()
         attributes.getDivisions.return_value = 2
         attributes.getKeySignature.return_value = 'C'
-        attributes.getTimeSignature.return_value = "4/4"
+        attributes.getTime.return_value = (4, 4)
         self.attributes = attributes
 
     def test_simpleNote(self):
