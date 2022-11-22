@@ -14,8 +14,7 @@ def parseArguments():
                         help="Which grammar to use in writing")
     parser.add_argument('--staff', type=int, default=1,
                         help="Which staff to convert")
-    parser.add_argument('--ignore_key', type=bool, default=False,
-                        action=argparse.BooleanOptionalAction,
+    parser.add_argument('--ignore_key', default=False, action='store_true',
                         help="Whethere to ignore key signature")
     parser.add_argument('--notes_per_line', type=int, default=0,
                         help="Expected number of notes per line if non-zero")
