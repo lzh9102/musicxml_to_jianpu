@@ -2,8 +2,14 @@
 
 This is a simple program to help you create JianPu notation from any standard
 notation software that outputs MusicXML.  It is still experimental and only
-support a very limit set of features from MusicXML. Currently the only
-supported output format is [FanQie JianPu](http://zhipu.lezhi99.com/Zhipu-index.html).
+support a very limit set of features from MusicXML.
+
+Currently two output formats are supported:
+
+- [FanQie JianPu](http://zhipu.lezhi99.com/Zhipu-index.html)
+  (`--grammar jianpu99`)
+- [Jianpu in Lilypond](http://ssb22.user.srcf.net/mwrhome/jianpu-ly.html)
+  (`--grammar jianpu-ly`)
 
 # Usage
 
