@@ -1,3 +1,5 @@
+![CI status](https://github.com/lzh9102/musicxml_to_jianpu/actions/workflows/run-tests.yaml/badge.svg)
+
 # Convert MusicXML to [JianPu](https://en.wikipedia.org/wiki/Numbered_musical_notation)
 
 This is a simple program to help you create JianPu notation from any standard
